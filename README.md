@@ -16,6 +16,8 @@
 
 1. 全埋点/可视化埋点
 2. 代码执行链路跟踪：如果要统计一个业务流程中执行了哪些函数，每个函数耗费了多少时间。这种通过业务去每个函数加统计逻辑肯定是不可行的，只能通过无代码入侵方案实现
+3. 性能分析、统计函数执行时间
+4. log 日志
 
 # 替换函数实现无代码入侵
 
@@ -40,7 +42,7 @@ import "./log"
 console.log("index.js 执行了")
 ```
 
->这种方法适合修改一些全局调用的函数
+> 这种方法适合修改一些全局调用的函数
 
 最后执行结果：
 
@@ -104,9 +106,71 @@ import { userLogin } from "./2proxy"
 userLogin("刘德华")
 ```
 
-# AOP 切面编程
+# AOP 面向切面编程
 
+通过 AOP 实现非业务代码和业务代码的分离。
+
+作用：在函数执行的前后添加代码。
+
+实现方式：
+
+1. ES6 之前通过 `Function.prototype.before`, `Function.prototype.after` 实现 AOP 编程
+2. ES6 之后通过装饰器 Decorator 实现 AOP 编程
+
+## Decorator
+
+例子：在用户登录前后插入代码
+
+```js
+// 定义装饰器
+export const before = (target, name, descriptor) => {
+  let oldValue = descriptor.value
+
+  descriptor.value = function () {
+    console.log(`before calling ${name} with`, arguments)
+    return oldValue.apply(this, arguments)
+  }
+
+  return descriptor
+}
+
+export const after = (target, name, descriptor) => {
+  let oldValue = descriptor.value
+
+  descriptor.value = function () {
+    const ret = oldValue.apply(this, arguments)
+    console.log(`after calling ${name} with`, arguments)
+    return ret
+  }
+
+  return descriptor
+}
+```
+
+```js
+// 业务层
+import { after, before } from "./3decorator"
+class User {
+  @after
+  @before
+  userLogin(name) {
+    console.log(`${name} 登录了`)
+  }
+}
+new User().userLogin("刘德华")
+```
+
+执行结果：
+
+```
+before calling userLogin with [Arguments] { '0': '刘德华' }
+刘德华 登录了
+after calling userLogin with [Arguments] { '0': '刘德华' }
+```
 
 # 借助打包工具实现无代码入侵
 
-webpack
+webpack, babel
+
+[还在手动埋点么？out 了。不到百行代码实现自动埋点](https://juejin.cn/post/6966216905208102949)
+
